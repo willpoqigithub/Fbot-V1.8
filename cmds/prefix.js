@@ -1,19 +1,20 @@
-const axios = require("axios");
 const fs = require("fs");
+const axios = require("axios");
 const path = require("path");
-const config = require("./config.json");
+const configPath = "./config.json";
+const config = JSON.parse(fs.readFileSync(configPath));
 
 module.exports = {
     name: "prefix",
     usePrefix: false,
     usage: "prefix",
     version: "1.1",
+    description: "Displays the bot's prefix and a GIF.",
 
-    async execute({ api, event }) {
+    execute: async ({ api, event }) => {
         const { threadID, messageID } = event;
         const botPrefix = config.prefix || "/";
-        const botName = config.botName || "Made in ChatGPT";
-
+        const botName = config.botName || "My Bot";
         const gifUrl = "https://media.giphy.com/media/1UwhOK8VX95TcfPBML/giphy.gif";
         const tempFilePath = path.join(__dirname, "prefix.gif");
 
@@ -31,7 +32,7 @@ module.exports = {
             writer.on("finish", () => {
                 api.sendMessage(
                     {
-                        body: `Bot Information\n📌 Prefix: ${botPrefix}\n🆔 Bot Name: ${botName}\n\nThank for using my Fbot`,
+                        body: `Bot Information\n📌 Prefix: ${botPrefix}\n🆔 Bot Name: ${botName}\n\nMade in ChatGPT`,
                         attachment: fs.createReadStream(tempFilePath),
                     },
                     threadID,
@@ -48,5 +49,5 @@ module.exports = {
             console.error("Error fetching GIF:", error);
             api.sendMessage("⚠️ Could not retrieve GIF.", threadID, messageID);
         }
-    }
+    },
 };
