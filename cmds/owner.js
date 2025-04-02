@@ -5,46 +5,44 @@ const configPath = "./config.json";
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const ownerUID = config.ownerUID || "100030880666720";
 const ownerName = config.ownerName || "Unknown";
+const profileURL = "https://www.facebook.com/tutel.17"; // Your Facebook Share URL
 
 module.exports = {
     name: "owner",
     usePrefix: false,
     usage: "owner",
-    version: "1.4",
+    version: "1.5",
     description: "Displays the bot owner's information.",
 
     execute: async ({ api, event }) => {
-        const profileURL = `https://www.facebook.com/${ownerUID}`;
-
         api.sendMessage(
             {
-                body: `👑 Bot Owner Information 👑\n\n🔹 Name: ${ownerName}\n🔹 UID: ${ownerUID}\n\nClick below to visit the profile.`,
-                mentions: [{ id: ownerUID, tag: ownerName }],
+                attachment: {
+                    type: "template",
+                    payload: {
+                        template_type: "generic",
+                        elements: [
+                            {
+                                title: `👑 Bot Owner: ${ownerName}`,
+                                subtitle: `🔹 UID: ${ownerUID}`,
+                                image_url: "https://graph.facebook.com/" + ownerUID + "/picture?type=large",
+                                buttons: [
+                                    {
+                                        type: "web_url",
+                                        url: profileURL,
+                                        title: "Visit Profile",
+                                    },
+                                    {
+                                        type: "element_share",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
             },
             event.threadID,
-            (err, info) => {
-                if (!err) {
-                    api.sendMessage(
-                        {
-                            attachment: {
-                                type: "template",
-                                payload: {
-                                    template_type: "button",
-                                    text: "Click the button below:",
-                                    buttons: [
-                                        {
-                                            type: "web_url",
-                                            url: profileURL,
-                                            title: "Visit Profile",
-                                        },
-                                    ],
-                                },
-                            },
-                        },
-                        event.threadID
-                    );
-                }
-            }
+            event.messageID
         );
     },
 };
