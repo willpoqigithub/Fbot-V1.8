@@ -32,7 +32,7 @@ module.exports = {
             writer.on("finish", () => {
                 api.sendMessage(
                     {
-                        body: `Bot Information\n📌 Prefix: ${botPrefix}\n🆔 Bot Name: ${botName}\n\nMade in ChatGPT`,
+                        body: ` Bot Information\n📌Prefix: ${botPrefix}\n🆔 Bot Name: ${botName}\n\nThanks for using my Fbot`,
                         attachment: fs.createReadStream(tempFilePath),
                     },
                     threadID,
