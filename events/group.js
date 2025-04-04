@@ -15,8 +15,7 @@ module.exports = {
 
                     // Tagging new user
                     const message = {
-                        body: `👋 Welcome @${userName} to the group!\n
-                        👥 Total members: ${totalMembers}\n\nThis is Beta test only`,
+                        body: `👋 Welcome @${userName} to the group!\n\n👥 Total members: ${totalMembers}\n🎉 How to get more income info FunStep??\n\n\n☑️ Kung masipag ka mag...\n✅ Invite\n✅ Investment \n✅ And stay updated sa main group.\n\n\n📝 Take note it is optional only.\nYou can withdraw without that.\n\nCongratulations and Happy\nEarnings to us @everyone 😍🎉 \n\n`,
                         mentions: [{ tag: `@${userName}`, id: userID }]
                     };
 
