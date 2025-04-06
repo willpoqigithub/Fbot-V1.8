@@ -24,7 +24,7 @@ module.exports = {
             const loadingMsg = await api.sendMessage("🧠 Gemini is thinking...", threadID);
 
             const response = await axios.get(apiUrl);
-            const { message } = response.data || {};
+            const { message } = response.data.description || {};
 
             if (message) {
                 return api.sendMessage(`🤖 **Gemini Response**\n━━━━━━━━━━━━━━━\n${message}\n━━━━━━━━━━━━━━━`, threadID, loadingMsg.messageID);
