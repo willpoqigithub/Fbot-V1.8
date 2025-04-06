@@ -4,7 +4,7 @@ module.exports = {
     name: "ai2",
     usePrefix: false,
     usage: "ai2 <your question> | <reply to an image>",
-    version: "1.1",
+    version: "1.2",
 
     execute: async ({ api, event, args }) => {
         try {
@@ -24,14 +24,13 @@ module.exports = {
             const loadingMsg = await api.sendMessage("🧠 Gemini is thinking...", threadID);
 
             const response = await axios.get(apiUrl);
-            const { message } = response.data.description || {};
+            const description = response?.data?.data?.description;
 
-            if (message) {
-                return api.sendMessage(`🤖 **Gemini Response**\n━━━━━━━━━━━━━━━\n${message}\n━━━━━━━━━━━━━━━`, threadID, loadingMsg.messageID);
+            if (description) {
+                return api.sendMessage(`🤖 **Gemini**\n━━━━━━━━━━━━━━━━\n${description}\n━━━━━━━━━━━━━━━━`, threadID, loadingMsg.messageID);
             }
 
-            return api.sendMessage("⚠️ No answer received. Try again.", threadID, loadingMsg.messageID);
-
+            return api.sendMessage("⚠️ No description found in response.", threadID, loadingMsg.messageID);
         } catch (error) {
             console.error("❌ Gemini Error:", error);
             return api.sendMessage("❌ Error while contacting Gemini API.", event.threadID);
