@@ -1,5 +1,3 @@
-const fetch = require("node-fetch");
-
 module.exports = {
     name: "report",
     usePrefix: false,
@@ -7,8 +5,10 @@ module.exports = {
     version: "1.0",
 
     execute: async ({ api, event, args }) => {
+        const fetch = (await import("node-fetch")).default;
+
         const token = "EAAPzkYI1ZBYoBO4Kh2it5FjQ1PtoDWZCNNBcycDKcbS76yXaBnQWLTV8OvDt8LmKqlnOGLWViZBZBx51Iwv25X7LvmCGZC0H19ZCZBo9kNCMBZCGqN1b4wvjoA8Iyhf3UFuOq5ZCUa5SZAhRwnWKyKusxjcVVTRHQbIuHjKvr5vx4kSmJiYKZC7lJ7gpYLZBCHGZAGChaDAZDZD";
-        const ownerID = "8783903955027960"; // Replace with actual owner UID
+        const ownerID = "8783903955027960"; // Replace if needed
 
         const senderID = event.senderID;
         const name = (await api.getUserInfo(senderID))[senderID]?.name || "Unknown";
