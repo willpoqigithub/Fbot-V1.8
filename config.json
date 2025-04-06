@@ -10,8 +10,8 @@
   },
   "botPrefix": "/",
   "botName": "Made in ChatGPT",
-  "botAdmins": [
-    ""
+  "ownerID": [
+    "100030880666720"
   ]
 }
 
