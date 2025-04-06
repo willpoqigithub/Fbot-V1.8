@@ -1,9 +1,9 @@
 module.exports = {
     name: "leave",
     usePrefix: true,
-    description: "Make the bot leave a group (current or chosen).",
-    usage: "leave [group_number]",
-    version: "1.0",
+    description: "Make the bot leave a group or list groups.",
+    usage: "leave [list | number]",
+    version: "1.1",
 
     async execute({ api, event, args }) {
         const senderID = event.senderID;
@@ -13,20 +13,29 @@ module.exports = {
             return api.sendMessage("❌ You are not authorized to use this command.", event.threadID);
         }
 
-        const goodbyeMsg = "👋 Goodbye @everyone.";
-
-        // Leave current group
-        if (!args[0]) {
-            await api.sendMessage(goodbyeMsg, event.threadID, () => {
-                api.removeUserFromGroup(api.getCurrentUserID(), event.threadID);
-            });
-            return;
-        }
-
-        // Leave a group by picking from list
         const threads = await api.getThreadList(100, null, ["INBOX"]);
         const groupThreads = threads.filter(t => t.isGroup);
 
+        // leave list
+        if (args[0] === "list") {
+            if (groupThreads.length === 0) return api.sendMessage("❌ No groups found.", event.threadID);
+
+            let msg = "📋 List of Groups:\n\n";
+            groupThreads.forEach((group, index) => {
+                msg += `${index + 1}. ${group.name || "Unnamed Group"} (${group.threadID})\n`;
+            });
+
+            return api.sendMessage(msg, event.threadID);
+        }
+
+        // leave current group
+        if (!args[0]) {
+            return api.sendMessage("👋 Goodbye @everyone.", event.threadID, () => {
+                api.removeUserFromGroup(api.getCurrentUserID(), event.threadID);
+            });
+        }
+
+        // leave specific group
         const index = parseInt(args[0]) - 1;
         const group = groupThreads[index];
 
@@ -35,13 +44,13 @@ module.exports = {
         }
 
         try {
-            await api.sendMessage(goodbyeMsg, group.threadID, () => {
+            await api.sendMessage("👋 Goodbye @everyone.", group.threadID, () => {
                 api.removeUserFromGroup(api.getCurrentUserID(), group.threadID);
             });
-            api.sendMessage(`✅ Left group: ${group.name || "Unnamed Group"}`, event.threadID);
+            return api.sendMessage(`✅ Left group: ${group.name || "Unnamed Group"}`, event.threadID);
         } catch (err) {
             console.error("❌ Error leaving group:", err);
-            api.sendMessage("❌ Failed to leave the group.", event.threadID);
+            return api.sendMessage("❌ Failed to leave the group.", event.threadID);
         }
     }
 };
