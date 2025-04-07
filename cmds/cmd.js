@@ -4,6 +4,7 @@ module.exports = {
     usage: "cmd",
     usePrefix: true,
     admin: true,
+    cooldown: 10,
 
     execute: async ({ api, event }) => {
         const { threadID, messageID } = event;
