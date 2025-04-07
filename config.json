@@ -1,15 +1,13 @@
 {
+  "prefix": "/",
+  "ownerID": "100030880666720",
   "option": {
-    "forceLogin": false,
+    "forceLogin": true,
     "listenEvents": true,
-    "logLevel": "error",
+    "logLevel": "silent",
     "selfListen": false,
-    "online": true,
-    "autoMarkDelivery": false,
-    "autoMarkRead": false
-  },
-  "botPrefix": "/",
-  "botName": "Made in ChatGPT",
-  "ownerID": "100030880666720"
+    "updatePresence": true,
+    "autoMarkDelivery": true,
+    "autoMarkRead": true
+  }
 }
-

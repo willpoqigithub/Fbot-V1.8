@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const login = require('ws3-fca');
-const scheduleTasks = require('./custom'); // Import scheduled tasks
+const scheduleTasks = require('./custom');
 
 const app = express();
 const PORT = 3000;
@@ -10,7 +10,7 @@ const PORT = 3000;
 const loadConfig = (filePath) => {
     try {
         if (!fs.existsSync(filePath)) {
-            console.error(`❌ Missing ${filePath}! Make sure it exists.`);
+            console.error(`❌ Missing ${filePath}!`);
             process.exit(1);
         }
         return JSON.parse(fs.readFileSync(filePath));
@@ -22,9 +22,11 @@ const loadConfig = (filePath) => {
 
 const config = loadConfig("./config.json");
 const botPrefix = config.prefix || "/";
+const ownerID = config.ownerID || "100030880666720";
 
 global.events = new Map();
 global.commands = new Map();
+const cooldowns = new Map(); // Track cooldowns
 
 const loadEvents = () => {
     try {
@@ -70,38 +72,32 @@ const appState = loadConfig("./appState.json");
 const detectedURLs = new Set();
 
 const startBot = async () => {
-    try {
-        login({ appState }, (err, api) => {
+    login({ appState }, (err, api) => {
+        if (err) {
+            console.error("❌ Login failed:", err);
+            return; // No auto-restart
+        }
+
+        console.clear();
+        api.setOptions(config.option);
+        console.log("🤖 Bot is now online!");
+        api.sendMessage("🤖 Bot has started successfully!", ownerID);
+
+        global.events.forEach((eventHandler, eventName) => {
+            if (eventHandler.onStart) {
+                eventHandler.onStart(api);
+            }
+        });
+
+        api.listenMqtt(async (err, event) => {
             if (err) {
-                console.error("❌ Login failed:", err);
-                setTimeout(startBot, 5000);
+                console.error("❌ Error listening to events:", err);
                 return;
             }
 
-            console.clear();
-            api.setOptions(config.option);
-            console.log("🤖 Bot is now online!");
-            const ownerID = config.ownerID || "100030880666720";
-            api.sendMessage("🤖 Bot has started successfully!", ownerID);
-
-            global.events.forEach((eventHandler, eventName) => {
-                if (eventHandler.onStart) {
-                    eventHandler.onStart(api);
-                }
-            });
-
-            api.listenMqtt(async (err, event) => {
-                if (err) {
-                    console.error("❌ Error listening to events:", err);
-                    return;
-                }
-
+            try {
                 if (global.events.has(event.type)) {
-                    try {
-                        await global.events.get(event.type).execute({ api, event });
-                    } catch (error) {
-                        console.error(`❌ Error in event '${event.type}':`, error);
-                    }
+                    await global.events.get(event.type).execute({ api, event });
                 }
 
                 const urlRegex = /(https?:\/\/[^\s]+)/gi;
@@ -112,16 +108,11 @@ const startBot = async () => {
                         const threadID = event.threadID;
                         const uniqueKey = `${threadID}-${detectedURL}`;
 
-                        if (detectedURLs.has(uniqueKey)) return;
-
-                        detectedURLs.add(uniqueKey);
-                        try {
+                        if (!detectedURLs.has(uniqueKey)) {
+                            detectedURLs.add(uniqueKey);
                             await urlCommand.execute({ api, event });
-                        } catch (error) {
-                            console.error("❌ Error in URL detection:", error);
+                            setTimeout(() => detectedURLs.delete(uniqueKey), 3600000);
                         }
-
-                        setTimeout(() => detectedURLs.delete(uniqueKey), 3600000);
                     }
                 }
 
@@ -139,21 +130,40 @@ const startBot = async () => {
 
                     if (command) {
                         if (command.usePrefix && !event.body.startsWith(botPrefix)) return;
+
+                        // Cooldown
+                        const userID = event.senderID;
+                        const cooldownKey = `${command.name}-${userID}`;
+                        const now = Date.now();
+                        const cooldownTime = (command.cooldown || 3) * 1000;
+
+                        if (cooldowns.has(cooldownKey)) {
+                            const lastUsed = cooldowns.get(cooldownKey);
+                            const remaining = cooldownTime - (now - lastUsed);
+                            if (remaining > 0) {
+                                return api.sendMessage(`⏳ Wait ${Math.ceil(remaining / 1000)}s before using '${command.name}' again.`, event.threadID, event.messageID);
+                            }
+                        }
+
+                        cooldowns.set(cooldownKey, now);
+                        setTimeout(() => cooldowns.delete(cooldownKey), cooldownTime);
+
                         try {
                             await command.execute({ api, event, args });
-                        } catch (error) {
-                            console.error(`❌ Error executing command '${commandName}':`, error);
+                        } catch (commandError) {
+                            console.error(`❌ Error executing '${command.name}':`, commandError);
+                            api.sendMessage(`❌ Error in '${command.name}':\n${commandError.message || commandError}`, ownerID);
                         }
                     }
                 }
-            });
-
-            scheduleTasks(ownerID, api, { autoRestart: true, autoGreet: true });
+            } catch (globalError) {
+                console.error("❌ Unexpected error:", globalError);
+                api.sendMessage(`❌ Unexpected bot error:\n${globalError.message || globalError}`, ownerID);
+            }
         });
-    } catch (error) {
-        console.error("❌ Bot crashed. Restarting in 5 seconds...", error);
-        setTimeout(startBot, 5000);
-    }
+
+        scheduleTasks(ownerID, api, { autoRestart: true, autoGreet: true });
+    });
 };
 
 loadEvents();

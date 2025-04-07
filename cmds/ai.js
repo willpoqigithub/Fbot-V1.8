@@ -1,19 +1,19 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 
 module.exports = {
     name: "ai",
     usePrefix: false,
-    usage: "ai <prompt> | <reply to an image>",
-    version: "1.5",
+    usage: "ai <your question> | <reply to an image>",
+    version: "1.2",
+    admin: false,
+    cooldown: 2,
 
     execute: async ({ api, event, args }) => {
         try {
-            const { messageID, threadID } = event;
+            const { threadID } = event;
             let prompt = args.join(" ");
             let imageUrl = null;
-            let apiUrl = `https://autobot.mark-projects.site/api/gemini-2.0-Flash-vison-image-generation?ask=${encodeURIComponent(prompt)}`;
+            let apiUrl = `https://autobot.mark-projects.site/api/gemini-2.5-pro-vison?ask=${encodeURIComponent(prompt)}`;
 
             if (event.messageReply && event.messageReply.attachments.length > 0) {
                 const attachment = event.messageReply.attachments[0];
@@ -23,47 +23,19 @@ module.exports = {
                 }
             }
 
-            const loadingMsg = await api.sendMessage("🔎 Processing your request, please wait...", threadID);
-            
+            const loadingMsg = await api.sendMessage("🧠 Gemini is thinking...", threadID);
+
             const response = await axios.get(apiUrl);
-            if (!response.data) {
-                return api.sendMessage("⚠️ No response received. Try again.", threadID, loadingMsg.messageID);
-            }
-
-            const { description, image } = response.data;
-
-            if (image) {
-                const imagePath = path.join(__dirname, "gemini_image.jpg");
-                const writer = fs.createWriteStream(imagePath);
-                const imageResponse = await axios({
-                    url: image,
-                    method: "GET",
-                    responseType: "stream",
-                });
-
-                imageResponse.data.pipe(writer);
-                writer.on("finish", () => {
-                    api.sendMessage(
-                        {
-                            body: `🖼️ **Image Generated:**\n${prompt}`,
-                            attachment: fs.createReadStream(imagePath),
-                        },
-                        threadID,
-                        () => fs.unlinkSync(imagePath),
-                        loadingMsg.messageID
-                    );
-                });
-                return;
-            }
+            const description = response?.data?.data?.description;
 
             if (description) {
-                return api.sendMessage(`🤖 **GEMINI AI**\n━━━━━━━━━━━━━━━━\n${description}\n━━━━━━━━━━━━━━━━`, threadID, loadingMsg.messageID);
+                return api.sendMessage(`🤖 **Gemini**\n━━━━━━━━━━━━━━━━\n${description}\n━━━━━━━━━━━━━━━━`, threadID, loadingMsg.messageID);
             }
 
-            return api.sendMessage("⚠️ No response generated. Try again with a different prompt.", threadID, loadingMsg.messageID);
+            return api.sendMessage("⚠️ No description found in response.", threadID, loadingMsg.messageID);
         } catch (error) {
-            console.error("❌ API Error:", error);
-            api.sendMessage("❌ An error occurred while processing the request.", event.threadID);
+            console.error("❌ Gemini Error:", error);
+            return api.sendMessage("❌ Error while contacting Gemini API.", event.threadID);
         }
-    },
+    }
 };
