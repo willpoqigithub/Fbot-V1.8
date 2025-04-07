@@ -8,7 +8,7 @@ module.exports = {
     usage: "shoti",
     version: "1.0",
     cooldown: 5,
-    admin: true,
+    admin: false,
 
     execute: async ({ api, event }) => {
         const { threadID, messageID } = event;
