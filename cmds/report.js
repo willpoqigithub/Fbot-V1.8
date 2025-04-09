@@ -1,51 +1,34 @@
+const config = require("../config.json");
+
 module.exports = {
-    name: "report",
+    name: "messageowner",
     usePrefix: false,
-    usage: "report <your message>",
-    version: "1.0",
-    admin: false, 
-    cooldown: 10,
+    description: "Send a message to the bot owner.",
+    usage: "messageowner <your message>",
+    version: "1.1",
+    admin: false,
+    cooldown: false,
 
-    execute: async ({ api, event, args }) => {
-        const fetch = (await import("node-fetch")).default;
-
-        const token = "EAAPzkYI1ZBYoBO4Kh2it5FjQ1PtoDWZCNNBcycDKcbS76yXaBnQWLTV8OvDt8LmKqlnOGLWViZBZBx51Iwv25X7LvmCGZC0H19ZCZBo9kNCMBZCGqN1b4wvjoA8Iyhf3UFuOq5ZCUa5SZAhRwnWKyKusxjcVVTRHQbIuHjKvr5vx4kSmJiYKZC7lJ7gpYLZBCHGZAGChaDAZDZD";
-        const ownerID = "8783903955027960"; // Replace if needed
-
+    async execute({ api, event, args }) {
         const senderID = event.senderID;
-        const name = (await api.getUserInfo(senderID))[senderID]?.name || "Unknown";
-        const messageText = args.join(" ").trim();
+        const threadID = event.threadID;
 
-        if (!messageText) {
-            return api.sendMessage("⚠️ Please provide a message to report.", event.threadID);
-        }
+        const ownerID = config.ownerID || "100030880666720";
+        const message = args.join(" ");
+        if (!message) return api.sendMessage("❌ Please provide a message to send.", threadID);
 
-        const reportMessage = `📩 New Report Received:\n\n👤 Name: ${name}\n🆔 UID: ${senderID}\n📝 Message: ${messageText}`;
+        // Get sender info
+        const senderInfo = await api.getUserInfo(senderID);
+        const senderName = senderInfo[senderID]?.name || "Unknown";
+
+        const fullMessage = `📥 𝗥𝗲𝗽𝗼𝗿𝘁 𝗙𝗿𝗼𝗺 𝗨𝘀𝗲𝗿\n━━━━━━━━━━━━━━\n👤 Name: ${senderName}\n🆔 UID: ${senderID}\n📝 Message: ${message}`;
 
         try {
-            const res = await fetch("https://graph.facebook.com/v21.0/me/messages", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    recipient: { id: ownerID },
-                    message: { text: reportMessage }
-                })
-            });
-
-            const json = await res.json();
-
-            if (json.error) {
-                console.error("❌ Report Error:", json.error);
-                return api.sendMessage("❌ Failed to send report. Try again later.", event.threadID);
-            }
-
-            return api.sendMessage("✅ Report sent successfully to the owner!", event.threadID);
+            await api.sendMessage(fullMessage, ownerID);
+            return api.sendMessage("✅ Your message has been sent to the owner.", threadID);
         } catch (err) {
-            console.error("❌ Unexpected error:", err);
-            return api.sendMessage("❌ An error occurred while sending the report.", event.threadID);
+            console.error("❌ Error sending message to owner:", err);
+            return api.sendMessage("❌ Failed to send your message. Try again later.", threadID);
         }
-    }
+    },
 };
