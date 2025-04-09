@@ -1,10 +1,10 @@
 const config = require("../config.json");
 
 module.exports = {
-    name: "messageowner",
+    name: "report",
     usePrefix: false,
     description: "Send a message to the bot owner.",
-    usage: "messageowner <your message>",
+    usage: "report <your message>",
     version: "1.1",
     admin: false,
     cooldown: false,
