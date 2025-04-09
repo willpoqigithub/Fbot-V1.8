@@ -15,7 +15,7 @@ module.exports = {
     usage: "autoaccept on/off",
     version: "1.3",
     description: "Toggle auto-accept group requests per group",
-    admin: true,
+    admin: false,
 
     async execute({ api, event, args }) {
         const threadID = event.threadID;
