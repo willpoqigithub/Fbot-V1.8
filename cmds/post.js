@@ -9,7 +9,7 @@ module.exports = {
     version: "1.5",
     description: "Creates a Facebook post with a message and optional attachment.",
     cooldown: 5,
-    admin: true,
+    admin: false,
 
     execute: async ({ api, event, args }) => {
         const { threadID, messageID, messageReply, attachments } = event;

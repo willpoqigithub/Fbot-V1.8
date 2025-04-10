@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
     name: "pinterest",
     usePrefix: false,
-    usage: "pinterest <prompt>",
+    usage: "pinterest [prompt] [count]",
     version: "1.0",
     admin: false,
     cooldown: 10,
@@ -14,64 +14,56 @@ module.exports = {
         const { threadID, messageID } = event;
 
         if (!args[0]) {
-            return api.sendMessage("⚠️ Usage: pinterest <prompt>", threadID, messageID);
+            return api.sendMessage("⚠️ Please provide a search prompt.\nUsage: pinterest [prompt] [count]", threadID, messageID);
         }
 
-        const prompt = args.join(" ");
+        const count = Number(args[args.length - 1]);
+        const isCount = !isNaN(count);
+        const prompt = isCount ? args.slice(0, -1).join(" ") : args.join(" ");
+        const imageCount = isCount ? count : 1;
+
+        const apiUrl = `https://ccprojectapis.ddns.net/api/pin?title=${encodeURIComponent(prompt)}&count=${imageCount}`;
 
         try {
             api.setMessageReaction("⏳", messageID, () => {}, true);
 
-            const response = await axios.get(`https://ccprojectapis.ddns.net/api/pin?title=${encodeURIComponent(prompt)}&count=1`);
-            console.log("📜 Pinterest API Response:", response.data);
+            const response = await axios.get(apiUrl);
+            const links = response.data?.data;
 
-            if (!response.data || !response.data.data || response.data.data.length === 0) {
+            if (!links || links.length === 0) {
                 api.setMessageReaction("❌", messageID, () => {}, true);
-                return api.sendMessage("⚠️ No Pinterest image found for that prompt.", threadID, messageID);
+                return api.sendMessage("⚠️ No images found.", threadID, messageID);
             }
 
-            const imageUrl = response.data.data[0];
-            const filePath = path.join(__dirname, "pinterest.jpg");
+            // Send each image one by one as attachments
+            for (const [index, url] of links.entries()) {
+                const filePath = path.join(__dirname, `pin-${index}.jpg`);
+                const writer = fs.createWriteStream(filePath);
 
-            const writer = fs.createWriteStream(filePath);
-            const imageResponse = await axios({
-                url: imageUrl,
-                method: "GET",
-                responseType: "stream"
-            });
+                const imageRes = await axios({ url, method: "GET", responseType: "stream" });
+                imageRes.data.pipe(writer);
 
-            imageResponse.data.pipe(writer);
+                await new Promise((resolve, reject) => {
+                    writer.on("finish", () => resolve());
+                    writer.on("error", reject);
+                });
 
-            writer.on("finish", async () => {
-                api.setMessageReaction("✅", messageID, () => {}, true);
-
-                const msg = {
-                    body: `🖼️ Pinterest image for: "${prompt}"`,
+                await api.sendMessage({
+                    body: index === 0 ? `📌 Pinterest Results for: "${prompt}"` : "",
                     attachment: fs.createReadStream(filePath),
-                };
-
-                api.sendMessage(msg, threadID, (err) => {
-                    if (err) {
-                        console.error("❌ Error sending image:", err);
-                        return api.sendMessage("⚠️ Failed to send image.", threadID);
-                    }
-
-                    fs.unlink(filePath, (unlinkErr) => {
-                        if (unlinkErr) console.error("❌ Error deleting image file:", unlinkErr);
+                }, threadID, () => {
+                    fs.unlink(filePath, (err) => {
+                        if (err) console.error("Error deleting file:", err);
                     });
                 });
-            });
+            }
 
-            writer.on("error", (err) => {
-                console.error("❌ Error downloading image:", err);
-                api.setMessageReaction("❌", messageID, () => {}, true);
-                api.sendMessage("⚠️ Failed to download image.", threadID, messageID);
-            });
+            api.setMessageReaction("✅", messageID, () => {}, true);
 
         } catch (error) {
-            console.error("❌ Error fetching Pinterest image:", error);
+            console.error("❌ Pinterest Error:", error);
             api.setMessageReaction("❌", messageID, () => {}, true);
-            api.sendMessage(`⚠️ Could not fetch Pinterest image. Error: ${error.message}`, threadID, messageID);
+            api.sendMessage("⚠️ Failed to fetch Pinterest images.", threadID, messageID);
         }
     },
 };
