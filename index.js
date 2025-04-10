@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const login = require("ws3-fca");
-const scheduleTasks = require("./custom");
 
 const app = express();
 const PORT = 3000;
@@ -133,7 +132,6 @@ const startBot = async () => {
                     if (command) {
                         if (command.usePrefix && !event.body.startsWith(botPrefix)) return;
 
-                        // Validate structure
                         const requiredFields = ["name", "execute", "usage", "version"];
                         const isValid = requiredFields.every(field => field in command && command[field]);
                         if (!isValid || typeof command.execute !== "function") {
@@ -141,12 +139,10 @@ const startBot = async () => {
                             return api.sendMessage(`⚠️ Command '${commandName}' is broken.`, event.threadID);
                         }
 
-                        // Admin check
                         if (command.admin && event.senderID !== config.ownerID) {
                             return api.sendMessage("❌ This command is restricted to the bot owner.", event.threadID);
                         }
 
-                        // Cooldown check
                         const now = Date.now();
                         const cooldown = (command.cooldown || 0) * 1000;
                         const key = `${event.senderID}-${command.name}`;
@@ -168,15 +164,9 @@ const startBot = async () => {
                     }
                 }
             });
-
-            scheduleTasks(config.ownerID, api, {
-                autoRestart: true,
-                autoGreet: true
-            });
         });
     } catch (error) {
         console.error("❌ Bot crashed:", error);
-        // No restart
     }
 };
 
