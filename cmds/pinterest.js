@@ -18,7 +18,7 @@ module.exports = {
         }
 
         const count = Number(args[args.length - 1]);
-        const isCount = !isNaN(count);
+        const isCount = !isNaN(count) && count > 0 && count <= 10; // Added validation (1-10 images)
         const prompt = isCount ? args.slice(0, -1).join(" ") : args.join(" ");
         const imageCount = isCount ? count : 1;
 
@@ -35,27 +35,46 @@ module.exports = {
                 return api.sendMessage("⚠️ No images found.", threadID, messageID);
             }
 
-            // Send each image one by one as attachments
-            for (const [index, url] of links.entries()) {
-                const filePath = path.join(__dirname, `pin-${index}.jpg`);
+            // Send the first image with caption
+            const firstImagePath = path.join(__dirname, `pin-0.jpg`);
+            const firstWriter = fs.createWriteStream(firstImagePath);
+            
+            const firstImageRes = await axios({ url: links[0], method: "GET", responseType: "stream" });
+            firstImageRes.data.pipe(firstWriter);
+
+            await new Promise((resolve, reject) => {
+                firstWriter.on("finish", resolve);
+                firstWriter.on("error", reject);
+            });
+
+            await api.sendMessage({
+                body: `📌 Pinterest Results for: "${prompt}" (1/${links.length})`,
+                attachment: fs.createReadStream(firstImagePath),
+            }, threadID);
+
+            fs.unlinkSync(firstImagePath);
+
+            // Send remaining images with delay between them
+            for (let i = 1; i < links.length; i++) {
+                const filePath = path.join(__dirname, `pin-${i}.jpg`);
                 const writer = fs.createWriteStream(filePath);
 
-                const imageRes = await axios({ url, method: "GET", responseType: "stream" });
+                const imageRes = await axios({ url: links[i], method: "GET", responseType: "stream" });
                 imageRes.data.pipe(writer);
 
                 await new Promise((resolve, reject) => {
-                    writer.on("finish", () => resolve());
+                    writer.on("finish", resolve);
                     writer.on("error", reject);
                 });
 
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1-second delay between images
+
                 await api.sendMessage({
-                    body: index === 0 ? `📌 Pinterest Results for: "${prompt}"` : "",
+                    body: `(${i+1}/${links.length})`,
                     attachment: fs.createReadStream(filePath),
-                }, threadID, () => {
-                    fs.unlink(filePath, (err) => {
-                        if (err) console.error("Error deleting file:", err);
-                    });
-                });
+                }, threadID);
+
+                fs.unlinkSync(filePath);
             }
 
             api.setMessageReaction("✅", messageID, () => {}, true);
