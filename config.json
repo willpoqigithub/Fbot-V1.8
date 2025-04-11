@@ -6,10 +6,11 @@
   "option": {
     "forceLogin": true,
     "listenEvents": true,
-    "logLevel": "silent",
-    "selfListen": false,
+    "logLevel": "error",
+    "selfListen": true,
     "updatePresence": true,
     "autoMarkDelivery": true,
-    "autoMarkRead": true
+    "autoMarkRead": true,
+    "online": true
   }
 }
