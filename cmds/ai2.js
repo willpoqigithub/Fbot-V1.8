@@ -3,7 +3,7 @@ const axios = require("axios");
 module.exports = {
     name: "ai2",
     usePrefix: false,
-    usage: "ai2 <your question> | <reply to an image> \n Powered by Gemini 2.5 pro + vision",
+    usage: "ai2 <your question> | <reply to an image> \n Powered by Gemini 2.5 pro + vision.",
     version: "1.2",
     admin: false,
     cooldown: 15,	
