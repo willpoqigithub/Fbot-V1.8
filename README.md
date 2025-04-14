@@ -1,4 +1,4 @@
-# Fbot-V1.6
+# Fbot-V1.8
 ### MADE BY CHATGPT
 
 ### GETTING STARTED
