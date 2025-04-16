@@ -27,6 +27,10 @@ node index.js
 4. Add your appState in appState.json
 
 
+
+[!TUTORIAL VIDEO](https://drive.google.com/file/d/127AllWsRZlnmxTJ3J1SVWR-YT5CKsdRU/view?usp=drivesdk)
+
+
 # SOURCES
 
 ### Noob and Brainless Creator: [Mark Martinez](https://www.facebook.com/share/1BWKFtqg2u/)
