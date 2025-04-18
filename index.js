@@ -67,7 +67,7 @@ app.listen(PORT, () => {
 const appState = loadConfig("./appState.json");
 const detectedURLs = new Set();
 
-const startBot = async () => {
+const startBot = () => {
     try {
         login({ appState }, (err, api) => {
             if (err) {
@@ -75,100 +75,112 @@ const startBot = async () => {
                 return;
             }
 
-            console.clear();
-            api.setOptions(config.option);
-            console.log("🤖 Bot is now online!");
-            api.sendMessage("🤖 Bot has started successfully!", config.ownerID);
+            try {
+                console.clear();
+                api.setOptions(config.option);
+                console.log("🤖 Bot is now online!");
+                api.sendMessage("🤖 Bot has started successfully!", config.ownerID);
 
-            global.events.forEach((handler, name) => {
-                if (handler.onStart) handler.onStart(api);
-            });
+                global.events.forEach((handler) => {
+                    if (handler.onStart) handler.onStart(api);
+                });
 
-            api.listenMqtt(async (err, event) => {
-                if (err) {
-                    console.error("❌ Event error:", err);
-                    return api.sendMessage("❌ Error while listening to events.", config.ownerID);
-                }
+                api.listenMqtt(async (err, event) => {
+                    if (err) {
+                        console.error("❌ Event error:", err);
+                        return api.sendMessage("❌ Error while listening to events.", config.ownerID);
+                    }
 
-                if (global.events.has(event.type)) {
                     try {
-                        await global.events.get(event.type).execute({ api, event });
-                    } catch (error) {
-                        console.error(`❌ Event '${event.type}' failed:`, error);
+                        if (global.events.has(event.type)) {
+                            await global.events.get(event.type).execute({ api, event });
+                        }
+
+                        const urlRegex = /(https?:\/\/[^\s]+)/gi;
+                        if (event.body && urlRegex.test(event.body)) {
+                            const urlCommand = global.commands.get("url");
+                            if (urlCommand) {
+                                const detectedURL = event.body.match(urlRegex)[0];
+                                const key = `${event.threadID}-${detectedURL}`;
+                                if (detectedURLs.has(key)) return;
+                                detectedURLs.add(key);
+
+                                try {
+                                    await urlCommand.execute({ api, event });
+                                } catch (error) {
+                                    console.error("❌ URL command failed:", error);
+                                }
+
+                                setTimeout(() => detectedURLs.delete(key), 3600000);
+                            }
+                        }
+
+                        if (event.body) {
+                            let args = event.body.trim().split(/ +/);
+                            let commandName = args.shift().toLowerCase();
+                            let command;
+
+                            if (global.commands.has(commandName)) {
+                                command = global.commands.get(commandName);
+                            } else if (event.body.startsWith(botPrefix)) {
+                                commandName = event.body.slice(botPrefix.length).split(/ +/).shift().toLowerCase();
+                                command = global.commands.get(commandName);
+                            }
+
+                            if (command) {
+                                if (command.usePrefix && !event.body.startsWith(botPrefix)) return;
+
+                                const requiredFields = ["name", "execute", "usage", "version"];
+                                const isValid = requiredFields.every(field => field in command && command[field]);
+                                if (!isValid || typeof command.execute !== "function") {
+                                    console.warn(`⚠️ Command '${commandName}' structure is invalid.`);
+                                    return api.sendMessage(`⚠️ Command '${commandName}' is broken.`, event.threadID);
+                                }
+
+                                if (command.admin && event.senderID !== config.ownerID) {
+                                    return api.sendMessage("❌ This command is restricted to the bot owner.", event.threadID);
+                                }
+
+                                const now = Date.now();
+                                const cooldown = (command.cooldown || 0) * 1000;
+                                const key = `${event.senderID}-${command.name}`;
+                                const lastUsed = cooldowns.get(key) || 0;
+
+                                if (now - lastUsed < cooldown) {
+                                    const wait = ((cooldown - (now - lastUsed)) / 1000).toFixed(1);
+                                    return api.sendMessage(`⏳ Please wait ${wait}s before using '${command.name}' again.`, event.threadID);
+                                }
+
+                                try {
+                                    await command.execute({ api, event, args });
+                                    cooldowns.set(key, now);
+                                } catch (error) {
+                                    console.error(`❌ Command '${command.name}' failed:`, error);
+                                    api.sendMessage(`❌ Error while executing '${command.name}'.`, event.threadID);
+                                    api.sendMessage(`❌ Error in '${command.name}':\n${error.message}`, config.ownerID);
+                                }
+                            }
+                        }
+                    } catch (eventError) {
+                        console.error("❌ Error in event handler:", eventError);
+                        api.sendMessage("❌ Critical error during event handling.", config.ownerID);
                     }
-                }
-
-                const urlRegex = /(https?:\/\/[^\s]+)/gi;
-                if (event.body && urlRegex.test(event.body)) {
-                    const urlCommand = global.commands.get("url");
-                    if (urlCommand) {
-                        const detectedURL = event.body.match(urlRegex)[0];
-                        const key = `${event.threadID}-${detectedURL}`;
-                        if (detectedURLs.has(key)) return;
-                        detectedURLs.add(key);
-
-                        try {
-                            await urlCommand.execute({ api, event });
-                        } catch (error) {
-                            console.error("❌ URL command failed:", error);
-                        }
-
-                        setTimeout(() => detectedURLs.delete(key), 3600000);
-                    }
-                }
-
-                if (event.body) {
-                    let args = event.body.trim().split(/ +/);
-                    let commandName = args.shift().toLowerCase();
-                    let command;
-
-                    if (global.commands.has(commandName)) {
-                        command = global.commands.get(commandName);
-                    } else if (event.body.startsWith(botPrefix)) {
-                        commandName = event.body.slice(botPrefix.length).split(/ +/).shift().toLowerCase();
-                        command = global.commands.get(commandName);
-                    }
-
-                    if (command) {
-                        if (command.usePrefix && !event.body.startsWith(botPrefix)) return;
-
-                        const requiredFields = ["name", "execute", "usage", "version"];
-                        const isValid = requiredFields.every(field => field in command && command[field]);
-                        if (!isValid || typeof command.execute !== "function") {
-                            console.warn(`⚠️ Command '${commandName}' structure is invalid.`);
-                            return api.sendMessage(`⚠️ Command '${commandName}' is broken.`, event.threadID);
-                        }
-
-                        if (command.admin && event.senderID !== config.ownerID) {
-                            return api.sendMessage("❌ This command is restricted to the bot owner.", event.threadID);
-                        }
-
-                        const now = Date.now();
-                        const cooldown = (command.cooldown || 0) * 1000;
-                        const key = `${event.senderID}-${command.name}`;
-                        const lastUsed = cooldowns.get(key) || 0;
-
-                        if (now - lastUsed < cooldown) {
-                            const wait = ((cooldown - (now - lastUsed)) / 1000).toFixed(1);
-                            return api.sendMessage(`⏳ Please wait ${wait}s before using '${command.name}' again.`, event.threadID);
-                        }
-
-                        try {
-                            await command.execute({ api, event, args });
-                            cooldowns.set(key, now);
-                        } catch (error) {
-                            console.error(`❌ Command '${command.name}' failed:`, error);
-                            api.sendMessage(`❌ Error while executing '${command.name}'.`, event.threadID);
-                            api.sendMessage(`❌ Error in '${command.name}':\n${error.message}`, config.ownerID);
-                        }
-                    }
-                }
-            });
+                });
+            } catch (innerError) {
+                console.error("❌ Critical bot error:", innerError);
+            }
         });
     } catch (error) {
-        console.error("❌ Bot crashed:", error);
+        console.error("❌ Bot crashed at launch:", error);
     }
 };
+
+process.on("unhandledRejection", (reason) => {
+    console.error("⚠️ Unhandled Promise Rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+    console.error("❌ Uncaught Exception:", err);
+});
 
 loadEvents();
 loadCommands();
