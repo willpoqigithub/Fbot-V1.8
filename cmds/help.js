@@ -19,9 +19,9 @@ module.exports = {
                     .join("\n\n");
 
                 const allHelpMessage = `
-[^^^^^^^^^^^^^^^^^^^^^^^]
+[•••••••••••••••••••••••]
      🤖 All Commands 🤖
-[_______________________]
+[•••••••••••••••••••••••]
 ${allCommands}
 
 Use 'help [command_name]' for details.`;
@@ -39,7 +39,7 @@ Use 'help [command_name]' for details.`;
             const commandHelpMessage = `
 [-----------------------]
      🤖 Command Info 🤖
-[^^^^^^^^^^^^^^^^^^^^^^^]
+[-----------------------]
 Name: ${command.name}
 Usage: ${command.usage}
 Prefix Required: ${command.usePrefix ? "✅ Yes" : "❌ No"}
@@ -58,9 +58,9 @@ Version: ${command.version}`;
             .join("\n\n");
 
         const helpMessage = `
-╔════════════╗
+|°°°°°°°°°°°°°°°°°°°°°°°°|
      🤖 Bot Commands 🤖
-╚════════════╝
+|••••••••••••••••••••••••|
 Here are some commands:  
 ${commandArray}
 
