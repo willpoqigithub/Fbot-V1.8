@@ -15,8 +15,8 @@ module.exports = {
 
     execute: async ({ api, event }) => {
         const { threadID, messageID } = event;
-        const botPrefix = config.prefix || "/";
-        const botName = config.botName || "My Bot";
+        const botPrefix = config.prefix || "willy";
+        const botName = config.botName || "willy Bot";
         const gifUrl = "https://media.giphy.com/media/1UwhOK8VX95TcfPBML/giphy.gif";
         const tempFilePath = path.join(__dirname, "prefix.gif");
 
